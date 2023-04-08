@@ -4,66 +4,50 @@ use std::io;
 
 use thirtyfour::prelude::*;
 
-pub async fn tiktok_register_user() -> WebDriverResult<()> {
-    let mut caps = DesiredCapabilities::chrome();
-    caps.add_chrome_arg("--disable-blink-features=AutomationControlled")?;
-    // userAgent: 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.7113.93 Safari/537.36
-    //caps.add_chrome_option("useAutomaticExtension", false)?;
-    //caps.add_chrome_option("excludeSwitches", ["enable-automation"])?;
+use rand::Rng;
 
-    let driver = WebDriver::new("http://localhost:9515", caps).await?;
-    driver.goto("https://www.tiktok.com/signup/phone-or-email/phone").await?;
-    thread::sleep(Duration::from_secs(5));
-    // Find the element you want to wait for.
-    //let month = driver.query(By::ClassName("tiktok-13o6q3w-DivSelectLabel")).wait(Duration::from_secs(10), Duration::from_millis(500));
-    
-    let elems = driver.find_all(By::ClassName("tiktok-13o6q3w-DivSelectLabel")).await?;
-
-    // Print the number of elements found
-    println!("Found {} div elements for month,day,year", elems.len());
-
-    for elem in &elems {
-        let div = elem.text().await?;
-        elem.click().await?;
-
-        if div == "Month" {
-            // Select an option by value
-            let month = elem.find(By::Id("Month-options-item-3")).await?;
-            month.click().await?;
-        }
-
-        if div == "Day" {
-            // Select an option by value
-            let day = elem.find(By::Id("Day-options-item-19")).await?;
-            day.click().await?;
-        }
-
-        if div == "Year" {
-            // Select an option by value
-            let year = elem.find(By::Id("Year-options-item-53")).await?;
-            year.click().await?;
-        }
-    }
-    
-    let phone_number = driver.find(By::ClassName("tiktok-af1p2k-InputContainer")).await?;
-    phone_number.send_keys("1234567890").await?;
-
-    thread::sleep(Duration::from_secs(10));
-
-    // Always explicitly close the browser.
-    driver.quit().await?;
-
-    Ok(())
+#[derive(Debug)]
+pub struct User {
+    name: String,
+    email: String,
+    dob: String,
+    username: String,
+    password_hash: String,
 }
 
-pub async fn twitter_register_user() -> WebDriverResult<()> {
-    let mut caps = DesiredCapabilities::chrome();
-    caps.add_chrome_arg("--disable-blink-features=AutomationControlled")?;
-    // userAgent: 'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.7113.93 Safari/537.36
-    //caps.add_chrome_option("useAutomaticExtension", false)?;
-    //caps.add_chrome_option("excludeSwitches", ["enable-automation"])?;
+async fn generate_password() -> String {
+    let password: String = (0..16)
+        .map(|_| {
+            let mut random_byte;
+            loop {
+                random_byte = rand::thread_rng().gen::<u8>();
+                if random_byte != b'"' && random_byte != b'\'' {
+                    break;
+                }
+            }
+            match random_byte % 4 {
+                0 => (random_byte % 26 + b'a') as char,          // Lowercase letter
+                1 => (random_byte % 26 + b'A') as char,          // Uppercase letter
+                2 => (random_byte % 10 + b'0') as char,          // Digit
+                _ => (random_byte % 15 + 33) as char,            // Special character (! through / and : through @ in ASCII)
+            }
+        })
+        .collect();
+    
+    return password;
+}
 
-    let driver = WebDriver::new("http://localhost:9515", caps).await?;
+pub async fn register_user(driver: &WebDriver, args: Vec<String>) -> WebDriverResult<()> {
+    let dob = format!("{} {} {}", args[3].as_str(), args[4].as_str(), args[5].as_str());
+    let user = User {
+        name: args[1].to_string(),
+        email: args[2].to_string(),
+        dob: dob,
+        username: args[6].to_string(),
+        password_hash: generate_password().await,
+    };
+    println!("{:?}", &user);
+
     driver.goto("https://twitter.com/i/flow/signup").await?;
     thread::sleep(Duration::from_secs(5));
 
@@ -82,17 +66,24 @@ pub async fn twitter_register_user() -> WebDriverResult<()> {
                     child.click().await?;
                     thread::sleep(Duration::from_secs(1));
 
-                    let refreshed_child_elems = driver.find_elements(By::Tag("input")).await?;
-                    refreshed_child_elems[0].send_keys("test user").await?;
-                    refreshed_child_elems[1].send_keys("syxuffajtizietvijj@bbitj.com").await?;
+                    let refreshed_child_elems = driver.find_all(By::Tag("input")).await?;
+                    refreshed_child_elems[0].send_keys(&user.name).await?;
+                    refreshed_child_elems[1].send_keys(&user.email).await?;
 
-                    let dropdowns = driver.find_elements(By::Tag("select")).await?;
-                    dropdowns[0].send_keys("April").await?;
-                    dropdowns[1].send_keys("20").await?;
-                    dropdowns[2].send_keys("1969").await?;
+
+                    let mut parts = user.dob.split_whitespace();
+
+                    let day = parts.next().unwrap().to_string();
+                    let month = parts.next().unwrap().to_string();
+                    let year = parts.next().unwrap().to_string();
+
+                    let dropdowns = driver.find_all(By::Tag("select")).await?;
+                    dropdowns[0].send_keys(month).await?;
+                    dropdowns[1].send_keys(day).await?;
+                    dropdowns[2].send_keys(year).await?;
 
                     thread::sleep(Duration::from_secs(2));
-                    let next = driver.find_elements(By::Tag("span")).await?;
+                    let next = driver.find_all(By::Tag("span")).await?;
                     next[next.len()-1].click().await?;
                     break;
                 }
@@ -101,24 +92,24 @@ pub async fn twitter_register_user() -> WebDriverResult<()> {
         }
     }
 
-    let next = driver.find_elements(By::Tag("span")).await?;
+    let next = driver.find_all(By::Tag("span")).await?;
     next[next.len()-1].click().await?;
 
-    let signup = driver.find_elements(By::Tag("span")).await?;
+    let signup = driver.find_all(By::Tag("span")).await?;
     signup[signup.len()-1].click().await?;
 
     println!("complete captcha / user verification");
     println!("Press Enter to continue...");
     io::stdin().read_line(&mut String::new()).expect("Failed to read line");
 
-    let verification_code = driver.find_elements(By::Tag("input")).await?;
-    verification_code[0].click().await?;
-    verification_code[0].send_keys("asdasd").await?;
+    thread::sleep(Duration::from_secs(5));
 
-    let next2 = driver.find_elements(By::Tag("span")).await?;
-    next2[next2.len()-1].click().await?;
+    
+    driver.goto("https://www.tiktok.com/en/").await?;
 
-    thread::sleep(Duration::from_secs(15));
-    driver.quit().await?;
+    println!("complete login to tiktok");
+    println!("Press Enter to continue...");
+    io::stdin().read_line(&mut String::new()).expect("Failed to read line");
+
     Ok(())
 }
