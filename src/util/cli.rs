@@ -11,7 +11,7 @@ fn main_help() {
     let help = r#"                      
                                 COMMANDS
                 create_user         creates new user on twitter & tiktok (password will be auto-generated)
-                                    usage: create_user <firstname> <lastname> <email> <month> <day> <year> <username> 
+                                    usage: create_user <username> <email> <month> <day> <year> 
                 help                this page lol
                 quit                exits the program"#;
     println!("{}", help);

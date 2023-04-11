@@ -6,12 +6,13 @@ use thirtyfour::prelude::*;
 
 use rand::Rng;
 
+use crate::util;
+
 #[derive(Debug)]
 pub struct User {
-    name: String,
+    username: String,
     email: String,
     dob: String,
-    username: String,
     password_hash: String,
 }
 
@@ -40,13 +41,14 @@ async fn generate_password() -> String {
 pub async fn register_user(driver: &WebDriver, args: Vec<String>) -> WebDriverResult<()> {
     let dob = format!("{} {} {}", args[3].as_str(), args[4].as_str(), args[5].as_str());
     let user = User {
-        name: args[1].to_string(),
+        username: args[1].to_string(),
         email: args[2].to_string(),
         dob: dob,
-        username: args[6].to_string(),
         password_hash: generate_password().await,
     };
-    println!("{:?}", &user);
+    
+    //println!("{:?}", &user);
+    util::db::add_user().await.unwrap();
 
     driver.goto("https://twitter.com/i/flow/signup").await?;
     thread::sleep(Duration::from_secs(5));
@@ -67,7 +69,7 @@ pub async fn register_user(driver: &WebDriver, args: Vec<String>) -> WebDriverRe
                     thread::sleep(Duration::from_secs(1));
 
                     let refreshed_child_elems = driver.find_all(By::Tag("input")).await?;
-                    refreshed_child_elems[0].send_keys(&user.name).await?;
+                    refreshed_child_elems[0].send_keys(&user.username).await?;
                     refreshed_child_elems[1].send_keys(&user.email).await?;
 
 
