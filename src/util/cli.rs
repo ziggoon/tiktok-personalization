@@ -1,19 +1,41 @@
 use rustyline::error::ReadlineError;
 use rustyline::{DefaultEditor, Result};
-//use rusqlite::{Connection, Result};
-//use std::thread;
 
+use colored::*;
 use thirtyfour::WebDriver;
 
 use crate::util;
 
+fn banner() {
+    let banner = r#"                                                                       
+    |    o|    |         |                                          |    o          |    o          
+    |--- .|__/ |--- ,---.|__/    ,---.,---.,---.,---.,---.,---.,---.|    .,---,,---.|--- .,---.,---.
+    |    ||  \ |    |   ||  \ ---|   ||---'|    `---.|   ||   |,---||    | .-' ,---||    ||   ||   |
+    `---'``   ``---'`---'`   `   |---'`---'`    `---'`---'`   '`---^`---'`'---'`---^`---'``---'`   '
+                                 |                                                                  
+    "#;
+    println!("{}", banner.red());
+}
 fn main_help() {
     let help = r#"                      
-                                COMMANDS
-                create_user         creates new user on twitter & tiktok (password will be auto-generated)
-                                    usage: create_user <username> <email> <month> <day> <year> 
-                help                this page lol
-                quit                exits the program"#;
+                COMMANDS
+
+    create_user         creates new user on twitter & tiktok (password will be auto-generated)
+                            usage: create_user <username> <email> <month> <day> <year>
+
+    scroll              scrolls down the page and sleeps for a random interval
+                            usage: sleep
+
+    get                 retrieves all users stored in db
+                            usage: get
+    
+    get_by_id           retrieves user by id
+                            usage: get_by_id <id>
+        
+    help                this page lol
+
+    exit                exits the program
+    "#;
     println!("{}", help);
 }
 
@@ -27,7 +49,7 @@ fn get_string_vec(s: String) -> Vec<String> {
 pub async fn main_loop(driver: &WebDriver) -> Result<()> {
     util::db::check_db().await.unwrap();
 
-    main_help();
+    banner();
     let mut user_input: Vec<String>;
     let mut rl = DefaultEditor::new()?;
 
@@ -37,11 +59,12 @@ pub async fn main_loop(driver: &WebDriver) -> Result<()> {
             Ok(line) => {
                 user_input = get_string_vec(line);
                 match user_input[0].as_str() {
-                    "create_user" => {
-                        util::web_helper::register_user(&driver, user_input).await.unwrap();
-                    },
+                    "create_user" => util::web_helper::register_user(&driver, user_input).await.unwrap(),
+                    "scroll" => util::web_helper::scroll(&driver).await.unwrap(),
+                    "get" => util::db::get_users().await.unwrap(),
+                    "get_by_id" => util::db::get_user_by_id(user_input).await.unwrap(),
                     "help" => main_help(),
-                    "exit" => std::process::exit(0),
+                    "exit" => break,
                     _ => continue,
                 }
             },

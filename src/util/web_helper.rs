@@ -1,29 +1,34 @@
 use std::time::Duration;
 use std::thread;
 use std::io;
+use rand::{ Rng, thread_rng };
+use rand::distributions::Uniform;
 
 use thirtyfour::prelude::*;
+use colored::*;
 
 use crate::util;
+use crate::util::db::User;
 
-#[derive(Debug)]
-pub struct User {
-    pub username: String,
-    pub email: String,
-    pub dob: String,
-    pub password_hash: String,
-}
+pub async fn scroll(driver: &WebDriver) -> WebDriverResult<()> {
+    let mut rng = thread_rng();
+    let interval_range = Uniform::new(0.5, 10.0);
 
+    // Iterate 10 times
+    for _ in 0..10 {
+        println!("{}", "[+] scrolling now..".green());
+        // Scroll down using JavaScript.
+        driver.execute_script("window.scrollBy(0, 720);", vec![]).await?;
 
-impl User {
-    pub fn new(username: &String, email: &String, dob: String, password_hash: String) -> User {
-        User {
-            username: username.to_string(),
-            email: email.to_string(),
-            dob,
-            password_hash
-        }
+        // Generate random interval between 0.5 and 10 seconds.
+        let random_interval = rng.sample(interval_range);
+
+        println!("sleeping for {}s", &random_interval);
+        // Pause for the random interval.
+        tokio::time::sleep(Duration::from_secs_f32(random_interval)).await;
     }
+
+    Ok(())
 }
 
 pub async fn register_user(driver: &WebDriver, args: Vec<String>) -> WebDriverResult<()> {

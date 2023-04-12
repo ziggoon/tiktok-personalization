@@ -1,4 +1,4 @@
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection, Result, params};
 use argon2::{
     password_hash::{
         rand_core::OsRng,
@@ -9,7 +9,26 @@ use argon2::{
 use rand::thread_rng;
 use rand::Rng;
 
-use crate::util::web_helper::User;
+#[derive(Debug)]
+pub struct User {
+    pub id: u8,
+    pub username: String,
+    pub email: String,
+    pub dob: String,
+    pub password_hash: String,
+}
+
+impl User {
+    pub fn new(username: &String, email: &String, dob: String, password_hash: String) -> User {
+        User {
+            id: 0,
+            username: username.to_string(),
+            email: email.to_string(),
+            dob,
+            password_hash
+        }
+    }
+}
 
 pub async fn check_db() -> Result<()> {
     let conn: Connection = Connection::open("tiktok.db").expect("connection failed");
@@ -27,8 +46,6 @@ pub async fn check_db() -> Result<()> {
 }
 
 pub async fn generate_password() -> String {
-    // I'm using the `concat!` macro to 
-    // avoid overly long lines
     let chars: String = concat!(
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         "abcdefghijklmnopqrstuvwxyz",
@@ -68,5 +85,46 @@ pub async fn add_user(user: &User) -> Result<()> {
         "insert into users (username, email, dob, password_hash) values (?1, ?2, ?3, ?4)",
         [&user.username, &user.email, &user.dob, &password_hash],
     ).expect("user insert failed");
+    Ok(())
+}
+
+pub async fn get_users() -> Result<()> {
+    let conn: Connection = Connection::open("tiktok.db").expect("connection failed");
+    let mut stmt = conn.prepare("select * from users")?;
+    let rows = stmt.query_map([], |row| {
+        Ok(User {
+            id: row.get(0)?,
+            username: row.get(1)?,
+            email: row.get(2)?,
+            dob: row.get(3)?,
+            password_hash: row.get(4)?,
+        })
+    })?;
+
+    for user in rows {
+        println!("found user {:?}", user.unwrap())
+    }
+    Ok(())
+}
+
+pub async fn get_user_by_id(args: Vec<String>) -> Result<()> {
+    let conn: Connection = Connection::open("tiktok.db").expect("connection failed");
+
+    let id = args[1].as_str();
+    let mut stmt = conn.prepare("select * from users where id = ?1")?;
+    let rows = stmt.query_map(params![id], |row| {
+        Ok(User {
+            id: row.get(0)?,
+            username: row.get(1)?,
+            email: row.get(2)?,
+            dob: row.get(3)?,
+            password_hash: row.get(4)?,
+        })
+    })?;
+
+    for user in rows {
+        println!("{:?}", user);
+    }
+
     Ok(())
 }
