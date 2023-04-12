@@ -4,88 +4,71 @@ use std::io;
 
 use thirtyfour::prelude::*;
 
-use rand::Rng;
-
 use crate::util;
 
 #[derive(Debug)]
 pub struct User {
-    username: String,
-    email: String,
-    dob: String,
-    password_hash: String,
+    pub username: String,
+    pub email: String,
+    pub dob: String,
+    pub password_hash: String,
 }
 
-async fn generate_password() -> String {
-    let password: String = (0..16)
-        .map(|_| {
-            let mut random_byte;
-            loop {
-                random_byte = rand::thread_rng().gen::<u8>();
-                if random_byte != b'"' && random_byte != b'\'' {
-                    break;
-                }
-            }
-            match random_byte % 4 {
-                0 => (random_byte % 26 + b'a') as char,          // Lowercase letter
-                1 => (random_byte % 26 + b'A') as char,          // Uppercase letter
-                2 => (random_byte % 10 + b'0') as char,          // Digit
-                _ => (random_byte % 15 + 33) as char,            // Special character (! through / and : through @ in ASCII)
-            }
-        })
-        .collect();
-    
-    return password;
+
+impl User {
+    pub fn new(username: &String, email: &String, dob: String, password_hash: String) -> User {
+        User {
+            username: username.to_string(),
+            email: email.to_string(),
+            dob,
+            password_hash
+        }
+    }
 }
 
 pub async fn register_user(driver: &WebDriver, args: Vec<String>) -> WebDriverResult<()> {
-    let dob = format!("{} {} {}", args[3].as_str(), args[4].as_str(), args[5].as_str());
-    let user = User {
-        username: args[1].to_string(),
-        email: args[2].to_string(),
-        dob: dob,
-        password_hash: generate_password().await,
-    };
+    let dob: String = format!("{} {} {}", args[3].as_str(), args[4].as_str(), args[5].as_str());
+    let user: User = User::new(&args[1], &args[2], dob, util::db::generate_password().await);
     
-    //println!("{:?}", &user);
-    util::db::add_user().await.unwrap();
+    println!("User password: {:?}", &user.password_hash);
+    util::db::add_user(&user).await.unwrap();
 
     driver.goto("https://twitter.com/i/flow/signup").await?;
     thread::sleep(Duration::from_secs(5));
 
-    let elems = driver.find_all(By::ClassName("css-901oao")).await?;
+    let elems: Vec<WebElement> = driver.find_all(By::ClassName("css-901oao")).await?;
     for elem in &elems {
-        let div = elem.text().await?;
+        let div: String = elem.text().await?;
         if div == "Create account" {
             elem.click().await?;
             thread::sleep(Duration::from_secs(1));
 
-            let child_elems = driver.find_all(By::ClassName("css-901oao")).await?;
+            let child_elems: Vec<WebElement> = driver.find_all(By::ClassName("css-901oao")).await?;
             for child in &child_elems {
-                let div = child.text().await?;
+                let div: String = child.text().await?;
 
                 if div == "Use email instead" {
                     child.click().await?;
                     thread::sleep(Duration::from_secs(1));
 
-                    let refreshed_child_elems = driver.find_all(By::Tag("input")).await?;
+                    let refreshed_child_elems: Vec<WebElement> = driver.find_all(By::Tag("input")).await?;
                     refreshed_child_elems[0].send_keys(&user.username).await?;
                     refreshed_child_elems[1].send_keys(&user.email).await?;
 
 
                     let mut parts = user.dob.split_whitespace();
 
-                    let day = parts.next().unwrap().to_string();
-                    let month = parts.next().unwrap().to_string();
-                    let year = parts.next().unwrap().to_string();
+                    let day: String = parts.next().unwrap().to_string();
+                    let month: String = parts.next().unwrap().to_string();
+                    let year: String = parts.next().unwrap().to_string();
 
-                    let dropdowns = driver.find_all(By::Tag("select")).await?;
+                    let dropdowns: Vec<WebElement> = driver.find_all(By::Tag("select")).await?;
                     dropdowns[0].send_keys(month).await?;
                     dropdowns[1].send_keys(day).await?;
                     dropdowns[2].send_keys(year).await?;
 
                     thread::sleep(Duration::from_secs(2));
-                    let next = driver.find_all(By::Tag("span")).await?;
+                    let next: Vec<WebElement> = driver.find_all(By::Tag("span")).await?;
                     next[next.len()-1].click().await?;
                     break;
                 }
@@ -94,10 +77,10 @@ pub async fn register_user(driver: &WebDriver, args: Vec<String>) -> WebDriverRe
         }
     }
 
-    let next = driver.find_all(By::Tag("span")).await?;
+    let next: Vec<WebElement> = driver.find_all(By::Tag("span")).await?;
     next[next.len()-1].click().await?;
 
-    let signup = driver.find_all(By::Tag("span")).await?;
+    let signup: Vec<WebElement> = driver.find_all(By::Tag("span")).await?;
     signup[signup.len()-1].click().await?;
 
     println!("complete captcha / user verification");

@@ -25,8 +25,8 @@ fn get_string_vec(s: String) -> Vec<String> {
 }
 
 pub async fn main_loop(driver: &WebDriver) -> Result<()> {
-    //let conn = Connection::open("db.db").expect("connection failed");
-    //util::db::check_db(&conn).await.unwrap();
+    util::db::check_db().await.unwrap();
+
     main_help();
     let mut user_input: Vec<String>;
     let mut rl = DefaultEditor::new()?;

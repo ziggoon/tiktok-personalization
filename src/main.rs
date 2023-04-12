@@ -1,5 +1,3 @@
-use std::io::{self, Write};
-
 mod util;
 use thirtyfour::prelude::{ WebDriver, WebDriverResult, DesiredCapabilities };
 
@@ -13,7 +11,6 @@ async fn main() -> WebDriverResult<()> {
     //caps.add_chrome_option("excludeSwitches", ["enable-automation"])?;
 
     let driver = WebDriver::new("http://localhost:9515", caps).await?;
-    
     util::cli::main_loop(&driver).await.unwrap();
     driver.quit().await?; 
     Ok(())
