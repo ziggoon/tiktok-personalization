@@ -18,7 +18,7 @@ pub async fn scroll(driver: &WebDriver) -> WebDriverResult<()> {
     for _ in 0..10 {
         println!("{}", "[+] scrolling now..".green());
         // Scroll down using JavaScript.
-        driver.execute_script("window.scrollBy(0, 720);", vec![]).await?;
+        driver.execute("window.scrollBy(0, 720);", vec![]).await?;
 
         // Generate random interval between 0.5 and 10 seconds.
         let random_interval = rng.sample(interval_range);
@@ -26,6 +26,23 @@ pub async fn scroll(driver: &WebDriver) -> WebDriverResult<()> {
         println!("sleeping for {}s", &random_interval);
         // Pause for the random interval.
         tokio::time::sleep(Duration::from_secs_f32(random_interval)).await;
+    }
+
+    Ok(())
+}
+
+pub async fn like_video(driver: &WebDriver) -> WebDriverResult<()> {
+    driver.goto("https://www.tiktok.com/en/").await?;
+
+    println!("complete login to tiktok");
+    println!("Press Enter to continue...");
+    io::stdin().read_line(&mut String::new()).expect("Failed to read line");
+
+    let elements = driver.find_all(By::Tag("strong")).await?;
+
+    for element in elements {
+        //let css_value = element.get_attribute("href").await?;
+        println!("Found element: {:?} {:?}", element, element.text().await?);
     }
 
     Ok(())

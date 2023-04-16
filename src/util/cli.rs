@@ -63,6 +63,7 @@ pub async fn main_loop(driver: &WebDriver) -> Result<()> {
                     "scroll" => util::web_helper::scroll(&driver).await.unwrap(),
                     "get" => util::db::get_users().await.unwrap(),
                     "get_by_id" => util::db::get_user_by_id(user_input).await.unwrap(),
+                    "like" => util::web_helper::like_video(&driver).await.unwrap(),
                     "help" => main_help(),
                     "exit" => break,
                     _ => continue,

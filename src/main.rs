@@ -12,6 +12,7 @@ async fn main() -> WebDriverResult<()> {
 
     let driver = WebDriver::new("http://localhost:9515", caps).await?;
     util::cli::main_loop(&driver).await.unwrap();
+    //util::web_helper::like_video(&driver).await?;
     driver.quit().await?; 
     Ok(())
 }

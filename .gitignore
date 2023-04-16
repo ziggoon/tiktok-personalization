@@ -3,3 +3,9 @@ Cargo.lock
 /target
 
 *.exe
+
+/chrome
+
+*.db
+
+.DS_Store
