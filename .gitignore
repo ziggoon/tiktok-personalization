@@ -9,3 +9,9 @@ Cargo.lock
 *.db
 
 .DS_Store
+
+*.pem
+
+notes
+
+*.csv

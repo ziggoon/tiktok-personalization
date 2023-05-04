@@ -1,13 +1,10 @@
-use rusqlite::{Connection, Result, params};
 use argon2::{
-    password_hash::{
-        rand_core::OsRng,
-        PasswordHash, PasswordHasher, PasswordVerifier, SaltString
-    },
-    Argon2
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Argon2,
 };
 use rand::thread_rng;
 use rand::Rng;
+use rusqlite::{params, Connection, Result};
 
 #[derive(Debug)]
 pub struct User {
@@ -25,7 +22,7 @@ impl User {
             username: username.to_string(),
             email: email.to_string(),
             dob,
-            password_hash
+            password_hash,
         }
     }
 }
@@ -50,7 +47,9 @@ pub async fn generate_password() -> String {
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         "abcdefghijklmnopqrstuvwxyz",
         "0123456789",
-        "!@#$%&*").to_string();
+        "!@#$%&*"
+    )
+    .to_string();
 
     // take the big string of characters
     // and convert it to an array of bytes
@@ -58,20 +57,17 @@ pub async fn generate_password() -> String {
 
     fn get_random_char(charset: &[u8]) -> char {
         let idx = thread_rng().gen_range(0..charset.len());
-        
+
         // the last statement of a Rust function (without
         // a semicolon) is the return value
         charset[idx] as char
     }
-    let length: usize = 16;
+    let length: usize = 12;
 
-    let pass: String = (0..length)
-        .map(|_| get_random_char(&charset))
-        .collect();
+    let pass: String = (0..length).map(|_| get_random_char(&charset)).collect();
 
-    return pass
+    return pass;
 }
-
 
 pub async fn add_user(user: &User) -> Result<()> {
     let conn: Connection = Connection::open("tiktok.db").expect("connection failed");
@@ -79,12 +75,16 @@ pub async fn add_user(user: &User) -> Result<()> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
 
-    let password_hash = argon2.hash_password(user.password_hash.as_bytes(), &salt).unwrap().to_string();
+    let password_hash = argon2
+        .hash_password(user.password_hash.as_bytes(), &salt)
+        .unwrap()
+        .to_string();
 
     conn.execute(
         "insert into users (username, email, dob, password_hash) values (?1, ?2, ?3, ?4)",
         [&user.username, &user.email, &user.dob, &password_hash],
-    ).expect("user insert failed");
+    )
+    .expect("user insert failed");
     Ok(())
 }
 
@@ -128,3 +128,4 @@ pub async fn get_user_by_id(args: Vec<String>) -> Result<()> {
 
     Ok(())
 }
+

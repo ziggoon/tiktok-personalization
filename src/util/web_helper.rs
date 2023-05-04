@@ -1,11 +1,12 @@
-use std::time::Duration;
-use std::thread;
-use std::io;
-use rand::{ Rng, thread_rng };
 use rand::distributions::Uniform;
+use rand::{thread_rng, Rng};
+use std::io;
+use std::thread;
+use std::time::Duration;
 
-use thirtyfour::prelude::*;
 use colored::*;
+use cookie::Cookie;
+use thirtyfour::prelude::*;
 
 use crate::util;
 use crate::util::db::User;
@@ -32,12 +33,6 @@ pub async fn scroll(driver: &WebDriver) -> WebDriverResult<()> {
 }
 
 pub async fn like_video(driver: &WebDriver) -> WebDriverResult<()> {
-    driver.goto("https://www.tiktok.com/en/").await?;
-
-    println!("complete login to tiktok");
-    println!("Press Enter to continue...");
-    io::stdin().read_line(&mut String::new()).expect("Failed to read line");
-
     let elements = driver.find_all(By::Tag("strong")).await?;
 
     for element in elements {
@@ -48,75 +43,40 @@ pub async fn like_video(driver: &WebDriver) -> WebDriverResult<()> {
     Ok(())
 }
 
-pub async fn register_user(driver: &WebDriver, args: Vec<String>) -> WebDriverResult<()> {
-    let dob: String = format!("{} {} {}", args[3].as_str(), args[4].as_str(), args[5].as_str());
-    let user: User = User::new(&args[1], &args[2], dob, util::db::generate_password().await);
-    
-    println!("User password: {:?}", &user.password_hash);
-    util::db::add_user(&user).await.unwrap();
+pub async fn login_user(driver: &WebDriver, args: Vec<String>) -> WebDriverResult<()> {
+    let email: String = args[1].to_string();
+    let password: String = args[2].to_string();
 
-    driver.goto("https://twitter.com/i/flow/signup").await?;
-    thread::sleep(Duration::from_secs(5));
+    driver
+        .goto("https://www.tiktok.com/login/phone-or-email/email")
+        .await?;
 
-    let elems: Vec<WebElement> = driver.find_all(By::ClassName("css-901oao")).await?;
-    for elem in &elems {
-        let div: String = elem.text().await?;
-        if div == "Create account" {
-            elem.click().await?;
-            thread::sleep(Duration::from_secs(1));
+    let login_fields: &Vec<WebElement> = &driver.find_all(By::ClassName("etcs7ny1")).await?;
+    let email_field: &WebElement = &login_fields[0];
+    let password_field: &WebElement = &login_fields[1];
 
-            let child_elems: Vec<WebElement> = driver.find_all(By::ClassName("css-901oao")).await?;
-            for child in &child_elems {
-                let div: String = child.text().await?;
+    email_field.send_keys(email).await?;
+    password_field.send_keys(password).await?;
 
-                if div == "Use email instead" {
-                    child.click().await?;
-                    thread::sleep(Duration::from_secs(1));
+    let login_button: WebElement = driver.find(By::ClassName("e1w6iovg0")).await?;
 
-                    let refreshed_child_elems: Vec<WebElement> = driver.find_all(By::Tag("input")).await?;
-                    refreshed_child_elems[0].send_keys(&user.username).await?;
-                    refreshed_child_elems[1].send_keys(&user.email).await?;
+    thread::sleep(Duration::from_secs(1));
+    login_button.click().await?;
 
+    Ok(())
+}
 
-                    let mut parts = user.dob.split_whitespace();
+pub async fn add_cookie(driver: &WebDriver) -> WebDriverResult<()> {
+    driver.goto("https://tiktok.com").await?;
 
-                    let day: String = parts.next().unwrap().to_string();
-                    let month: String = parts.next().unwrap().to_string();
-                    let year: String = parts.next().unwrap().to_string();
+    let cookie = Cookie::build("sessionid", "7553d9eb2d35a3fa261985da7c8a32ee")
+        .domain(".tiktok.com")
+        .path("/")
+        .secure(true)
+        .http_only(true)
+        .finish();
 
-                    let dropdowns: Vec<WebElement> = driver.find_all(By::Tag("select")).await?;
-                    dropdowns[0].send_keys(month).await?;
-                    dropdowns[1].send_keys(day).await?;
-                    dropdowns[2].send_keys(year).await?;
-
-                    thread::sleep(Duration::from_secs(2));
-                    let next: Vec<WebElement> = driver.find_all(By::Tag("span")).await?;
-                    next[next.len()-1].click().await?;
-                    break;
-                }
-            }
-            break;
-        }
-    }
-
-    let next: Vec<WebElement> = driver.find_all(By::Tag("span")).await?;
-    next[next.len()-1].click().await?;
-
-    let signup: Vec<WebElement> = driver.find_all(By::Tag("span")).await?;
-    signup[signup.len()-1].click().await?;
-
-    println!("complete captcha / user verification");
-    println!("Press Enter to continue...");
-    io::stdin().read_line(&mut String::new()).expect("Failed to read line");
-
-    thread::sleep(Duration::from_secs(5));
-
-    
-    driver.goto("https://www.tiktok.com/en/").await?;
-
-    println!("complete login to tiktok");
-    println!("Press Enter to continue...");
-    io::stdin().read_line(&mut String::new()).expect("Failed to read line");
+    driver.add_cookie(cookie).await?;
 
     Ok(())
 }

@@ -59,8 +59,12 @@ pub async fn main_loop(driver: &WebDriver) -> Result<()> {
             Ok(line) => {
                 user_input = get_string_vec(line);
                 match user_input[0].as_str() {
-                    "create_user" => util::web_helper::register_user(&driver, user_input).await.unwrap(),
+                    "login_user" => util::web_helper::login_user(&driver, user_input)
+                        .await
+                        .unwrap(),
+                    "add_cookie" => util::web_helper::add_cookie(&driver).await.unwrap(),
                     "scroll" => util::web_helper::scroll(&driver).await.unwrap(),
+                    "password" => println!("{:?}", util::db::generate_password().await),
                     "get" => util::db::get_users().await.unwrap(),
                     "get_by_id" => util::db::get_user_by_id(user_input).await.unwrap(),
                     "like" => util::web_helper::like_video(&driver).await.unwrap(),
@@ -68,20 +72,20 @@ pub async fn main_loop(driver: &WebDriver) -> Result<()> {
                     "exit" => break,
                     _ => continue,
                 }
-            },
+            }
             Err(ReadlineError::Interrupted) => {
                 println!("ctrl+c pressed. quitting now..");
-                break
-            },
+                break;
+            }
             Err(ReadlineError::Eof) => {
                 println!("ctrl+d pressed. quitting now..");
-                break
-            },
+                break;
+            }
             Err(err) => {
                 println!("error: {:?}", err);
-                break
+                break;
             }
-        } 
+        }
     }
     Ok(())
 }
