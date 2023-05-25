@@ -47,9 +47,9 @@ fn get_string_vec(s: String) -> Vec<String> {
 }
 
 pub async fn main_loop(driver: &WebDriver) -> Result<()> {
-    util::db::check_db().await.unwrap();
-
     banner();
+    let db_client = mongodb::Client::with_uri_str("mongodb://localhost:27017").await.unwrap();
+    
     let mut user_input: Vec<String>;
     let mut rl = DefaultEditor::new()?;
 
@@ -59,15 +59,13 @@ pub async fn main_loop(driver: &WebDriver) -> Result<()> {
             Ok(line) => {
                 user_input = get_string_vec(line);
                 match user_input[0].as_str() {
-                    "login_user" => util::web_helper::login_user(&driver, user_input)
-                        .await
-                        .unwrap(),
+                    "login_user" => util::web_helper::login_user(&driver, user_input).await.unwrap(),
                     "add_cookie" => util::web_helper::add_cookie(&driver).await.unwrap(),
+                    "search" => util::web_helper::search(&driver, user_input[1].to_string()).await.unwrap(),
+                    "hashtag" => util::web_helper::navigate_to_hashtag(&driver, user_input[1].to_string()).await.unwrap(),
                     "scroll" => util::web_helper::scroll(&driver).await.unwrap(),
-                    "password" => println!("{:?}", util::db::generate_password().await),
-                    "get" => util::db::get_users().await.unwrap(),
-                    "get_by_id" => util::db::get_user_by_id(user_input).await.unwrap(),
                     "like" => util::web_helper::like_video(&driver).await.unwrap(),
+                    "load_users" => util::db::load_users(db_client.clone()).await.unwrap(),
                     "help" => main_help(),
                     "exit" => break,
                     _ => continue,
