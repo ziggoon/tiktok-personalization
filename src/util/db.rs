@@ -1,19 +1,40 @@
-use bcrypt::{hash, verify, DEFAULT_COST};
-use futures::stream::TryStreamExt;
-use mongodb::{bson::doc, bson::Document, options::FindOptions};
+use futures::StreamExt;
+use mongodb::bson::doc;
 
 use crate::util::web_helper::User;
 
-pub async fn load_users(client_ref: mongodb::Client) -> Result<(), Box<dyn std::error::Error>> {
-    let db = client_ref.database("tiktok-test");
+pub async fn get_random_user(
+    client_ref: mongodb::Client,
+) -> Result<User, Box<dyn std::error::Error>> {
+    let db = client_ref.database("test");
     let collection: mongodb::Collection<User> = db.collection("users");
 
-    let find_options = FindOptions::builder().sort(doc! { "email": 1 }).build();
-    let mut cursor = collection.find(None, find_options).await?;
+    let pipeline = vec![doc! { "$sample" : { "size" : 1 } }];
 
-    while let Some(item) = cursor.try_next().await? {
-        println!("{}", item.email);
+    if let Ok(mut cursor) = collection.aggregate(pipeline, None).await {
+        if let Some(result) = cursor.next().await {
+            match result {
+                Ok(doc) => {
+                    let user = User::new(
+                        doc.get("_id")
+                            .unwrap()
+                            .as_object_id()
+                            .expect("failed to convert"),
+                        doc.get("email").unwrap().as_str().unwrap().to_owned(),
+                        doc.get("username").unwrap().as_str().unwrap().to_owned(),
+                        doc.get("password").unwrap().as_str().unwrap().to_owned(),
+                    );
+
+                    return Ok(user);
+                    //println!("{:?}", user);
+                }
+                Err(e) => {
+                    eprintln!("err {}", e);
+                }
+            }
+        }
+    } else {
+        eprintln!("error retrieving cursor");
     }
-
-    Ok(())
+    Err("failed to get user :(".into())
 }

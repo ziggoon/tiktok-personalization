@@ -16,4 +16,6 @@ mongodb = "2.5.0"
 csv = "1.2.1"
 bcrypt = "0.14.0"
 futures-util = "0.3.28"
-serde = "1.0.163"
+serde = { version = "1.0", features = ["derive"] }
+clap = "4.3.0"
+shlex = "1.1.0"

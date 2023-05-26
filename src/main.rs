@@ -7,7 +7,7 @@ async fn main() -> WebDriverResult<()> {
     caps.add_chrome_arg("--disable-blink-features=AutomationControlled")?;
     let driver = WebDriver::new("http://localhost:9515", caps).await?;
 
-    util::cli::main_loop(&driver).await.unwrap();    
+    util::cli::main_loop(&driver).await.unwrap();
     driver.quit().await?;
     Ok(())
 }

@@ -1,7 +1,7 @@
-use rustyline::error::ReadlineError;
-use rustyline::{DefaultEditor, Result};
-
+use clap::Command;
 use colored::*;
+
+use std::io::Write;
 use thirtyfour::WebDriver;
 
 use crate::util;
@@ -16,74 +16,102 @@ fn banner() {
     "#;
     println!("{}", banner.red());
 }
-fn main_help() {
-    let help = r#"                      
-                COMMANDS
 
-    create_user         creates new user on twitter & tiktok (password will be auto-generated)
-                            usage: create_user <username> <email> <month> <day> <year>
-
-    scroll              scrolls down the page and sleeps for a random interval
-                            usage: sleep
-
-    get                 retrieves all users stored in db
-                            usage: get
-    
-    get_by_id           retrieves user by id
-                            usage: get_by_id <id>
-        
-    help                this page lol
-
-    exit                exits the program
-    "#;
-    println!("{}", help);
-}
-
-fn get_string_vec(s: String) -> Vec<String> {
-    if s.is_empty() {
-        return vec![String::from("")];
-    }
-    s.split_whitespace().map(str::to_string).collect()
-}
-
-pub async fn main_loop(driver: &WebDriver) -> Result<()> {
+pub async fn main_loop(driver: &WebDriver) -> Result<(), Box<dyn std::error::Error>> {
     banner();
-    let db_client = mongodb::Client::with_uri_str("mongodb://localhost:27017").await.unwrap();
-    
-    let mut user_input: Vec<String>;
-    let mut rl = DefaultEditor::new()?;
+    let db_client = mongodb::Client::with_uri_str("mongodb://localhost:27017")
+        .await
+        .unwrap();
 
     loop {
-        let readline = rl.readline("tiktok-test# ");
-        match readline {
-            Ok(line) => {
-                user_input = get_string_vec(line);
-                match user_input[0].as_str() {
-                    "login_user" => util::web_helper::login_user(&driver, user_input).await.unwrap(),
-                    "add_cookie" => util::web_helper::add_cookie(&driver).await.unwrap(),
-                    "search" => util::web_helper::search(&driver, user_input[1].to_string()).await.unwrap(),
-                    "hashtag" => util::web_helper::navigate_to_hashtag(&driver, user_input[1].to_string()).await.unwrap(),
-                    "scroll" => util::web_helper::scroll(&driver).await.unwrap(),
-                    "like" => util::web_helper::like_video(&driver).await.unwrap(),
-                    "load_users" => util::db::load_users(db_client.clone()).await.unwrap(),
-                    "help" => main_help(),
-                    "exit" => break,
-                    _ => continue,
+        let line = readline()?;
+        let line = line.trim();
+
+        if line.is_empty() {
+            continue;
+        }
+
+        match respond(line, driver).await {
+            Ok(quit) => {
+                if quit {
+                    break;
                 }
             }
-            Err(ReadlineError::Interrupted) => {
-                println!("ctrl+c pressed. quitting now..");
-                break;
-            }
-            Err(ReadlineError::Eof) => {
-                println!("ctrl+d pressed. quitting now..");
-                break;
-            }
-            Err(err) => {
-                println!("error: {:?}", err);
-                break;
+            Err(e) => {
+                write!(std::io::stdout(), "{e}").map_err(|e| e.to_string())?;
+                std::io::stdout().flush().map_err(|e| e.to_string())?;
             }
         }
     }
     Ok(())
+}
+
+async fn respond(line: &str, driver: &WebDriver) -> Result<bool, String> {
+    let args = shlex::split(line).ok_or("[error] failed to read command")?;
+    let matches = cli()
+        .try_get_matches_from(args)
+        .map_err(|e| e.to_string())?;
+    match matches.subcommand() {
+        Some(("debug", _matches)) => {
+            write!(
+                std::io::stdout(),
+                "[debug] logging into TikTok with debug account \n"
+            )
+            .map_err(|e| e.to_string())?;
+            std::io::stdout().flush().map_err(|e| e.to_string())?;
+            util::web_helper::add_cookie(&driver).await.unwrap();
+        }
+        Some(("quit", _matches)) => {
+            write!(std::io::stdout(), "Exiting ...").map_err(|e| e.to_string())?;
+            std::io::stdout().flush().map_err(|e| e.to_string())?;
+            return Ok(true);
+        }
+        Some((name, _matches)) => unimplemented!("{name}"),
+        None => unreachable!("subcommand required"),
+    }
+
+    Ok(false)
+}
+
+fn cli() -> Command {
+    // strip out usage
+    const PARSER_TEMPLATE: &str = "\
+        {all-args}
+    ";
+    // strip out name/version
+    const APPLET_TEMPLATE: &str = "\
+        {about-with-newline}\n\
+        {usage-heading}\n    {usage}\n\
+        \n\
+        {all-args}{after-help}\
+    ";
+
+    Command::new("repl")
+        .multicall(true)
+        .arg_required_else_help(true)
+        .subcommand_required(true)
+        .subcommand_value_name("cmd")
+        .subcommand_help_heading("commands")
+        .help_template(PARSER_TEMPLATE)
+        .subcommand(
+            Command::new("debug")
+                .about("enter debug mode")
+                .help_template(APPLET_TEMPLATE),
+        )
+        .subcommand(
+            Command::new("quit")
+                .alias("exit")
+                .about("quit the program")
+                .help_template(APPLET_TEMPLATE),
+        )
+}
+
+fn readline() -> Result<String, String> {
+    write!(std::io::stdout(), "$ ").map_err(|e| e.to_string())?;
+    std::io::stdout().flush().map_err(|e| e.to_string())?;
+    let mut buffer = String::new();
+    std::io::stdin()
+        .read_line(&mut buffer)
+        .map_err(|e| e.to_string())?;
+    Ok(buffer)
 }
