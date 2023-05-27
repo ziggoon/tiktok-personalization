@@ -1,8 +1,8 @@
 use clap::Command;
 use colored::*;
 
+use futures::StreamExt;
 use std::io::Write;
-use thirtyfour::WebDriver;
 
 use crate::util;
 
@@ -17,12 +17,8 @@ fn banner() {
     println!("{}", banner.red());
 }
 
-pub async fn main_loop(driver: &WebDriver) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn main_loop() -> Result<(), Box<dyn std::error::Error>> {
     banner();
-    let db_client = mongodb::Client::with_uri_str("mongodb://localhost:27017")
-        .await
-        .unwrap();
-
     loop {
         let line = readline()?;
         let line = line.trim();
@@ -31,7 +27,7 @@ pub async fn main_loop(driver: &WebDriver) -> Result<(), Box<dyn std::error::Err
             continue;
         }
 
-        match respond(line, driver).await {
+        match respond(line).await {
             Ok(quit) => {
                 if quit {
                     break;
@@ -46,7 +42,7 @@ pub async fn main_loop(driver: &WebDriver) -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 
-async fn respond(line: &str, driver: &WebDriver) -> Result<bool, String> {
+async fn respond(line: &str) -> Result<bool, String> {
     let args = shlex::split(line).ok_or("[error] failed to read command")?;
     let matches = cli()
         .try_get_matches_from(args)
@@ -59,7 +55,33 @@ async fn respond(line: &str, driver: &WebDriver) -> Result<bool, String> {
             )
             .map_err(|e| e.to_string())?;
             std::io::stdout().flush().map_err(|e| e.to_string())?;
-            util::web_helper::add_cookie(&driver).await.unwrap();
+            util::debug::add_cookie().await.unwrap();
+        }
+        Some(("start", _matches)) => {
+            write!(std::io::stdout(), "[+] starting data collection \n")
+                .map_err(|e| e.to_string())?;
+            std::io::stdout().flush().map_err(|e| e.to_string())?;
+
+            let db_client = mongodb::Client::with_uri_str("mongodb://localhost:27017")
+                .await
+                .unwrap();
+            let mut handles = vec![];
+
+            for _ in 0..5 {
+                let user = util::db::get_random_user(db_client.clone()).await.unwrap();
+
+                let handle = tokio::spawn(async move {
+                    user.run().await.unwrap();
+                });
+
+                handles.push(handle);
+            }
+
+            futures::stream::iter(handles)
+                .for_each(|f| async {
+                    let _ = f.await;
+                })
+                .await;
         }
         Some(("quit", _matches)) => {
             write!(std::io::stdout(), "Exiting ...").map_err(|e| e.to_string())?;
@@ -99,6 +121,11 @@ fn cli() -> Command {
                 .help_template(APPLET_TEMPLATE),
         )
         .subcommand(
+            Command::new("start")
+                .about("start data collection")
+                .help_template(APPLET_TEMPLATE),
+        )
+        .subcommand(
             Command::new("quit")
                 .alias("exit")
                 .about("quit the program")
@@ -107,7 +134,7 @@ fn cli() -> Command {
 }
 
 fn readline() -> Result<String, String> {
-    write!(std::io::stdout(), "$ ").map_err(|e| e.to_string())?;
+    write!(std::io::stdout(), "algoprober# ").map_err(|e| e.to_string())?;
     std::io::stdout().flush().map_err(|e| e.to_string())?;
     let mut buffer = String::new();
     std::io::stdin()

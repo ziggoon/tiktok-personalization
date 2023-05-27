@@ -1,33 +1,63 @@
-use colored::*;
-use rand::distributions::Uniform;
-use rand::{thread_rng, Rng};
-use thirtyfour::{actions::KeyAction, cookie::SameSite, prelude::*};
-
-use mongodb::bson::oid::ObjectId;
-
 use serde::{Deserialize, Serialize};
+
+use rand::Rng;
 use std::thread;
 use std::time::Duration;
 
+use thirtyfour::prelude::*;
+
+use mongodb::bson::oid::ObjectId;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    pub _id: ObjectId,
+    pub id_: ObjectId,
     pub username: String,
     pub email: String,
     pub password: String,
+    pub type_: AccountType,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum AccountType {
+    Passive,
+    Active,
+    Control,
 }
 
 impl User {
-    pub fn new(id: ObjectId, email: String, username: String, password: String) -> User {
+    pub fn new(id_: ObjectId, email: String, username: String, password: String) -> User {
         User {
-            _id: id,
+            id_,
             email: email.to_string(),
             username: username.to_string(),
             password: password.to_string(),
+            type_: {
+                let options = vec![
+                    AccountType::Passive,
+                    AccountType::Active,
+                    AccountType::Control,
+                ];
+                let mut rng = rand::thread_rng();
+                let choice = rng.gen_range(0..3);
+                match options[choice] {
+                    AccountType::Passive => {
+                        println!("[!] this account has been selected as Passive");
+                        AccountType::Passive
+                    }
+                    AccountType::Active => {
+                        println!("[!] this account has been selected as Active");
+                        AccountType::Active
+                    }
+                    AccountType::Control => {
+                        println!("[!] this account has been selected as Control");
+                        AccountType::Control
+                    }
+                }
+            },
         }
     }
 
-    pub async fn scroll(&self, driver: &WebDriver) -> WebDriverResult<()> {
+    pub async fn scroll(&self, driver: WebDriver) -> WebDriverResult<()> {
         driver
             .action_chain()
             .send_keys("\u{e015}")
@@ -36,12 +66,12 @@ impl User {
         Ok(())
     }
 
-    pub async fn like_video(&self, driver: &WebDriver) -> WebDriverResult<()> {
+    pub async fn like_video(&self, driver: WebDriver) -> WebDriverResult<()> {
         driver.action_chain().send_keys("L").perform().await?;
         Ok(())
     }
 
-    pub async fn add_comment(&self, driver: &WebDriver) -> WebDriverResult<()> {
+    pub async fn add_comment(&self, driver: WebDriver) -> WebDriverResult<()> {
         let elements = driver.find_all(By::Tag("strong")).await?;
 
         for element in elements {
@@ -76,7 +106,7 @@ impl User {
         Ok(())
     }
 
-    pub async fn login_user(&self, driver: &WebDriver) -> WebDriverResult<()> {
+    pub async fn login(&self, driver: WebDriver) -> WebDriverResult<()> {
         driver
             .goto("https://www.tiktok.com/login/phone-or-email/email")
             .await?;
@@ -85,8 +115,9 @@ impl User {
         let email_field: &WebElement = &login_fields[0];
         let password_field: &WebElement = &login_fields[1];
 
-        email_field.send_keys(self.email).await?;
-        password_field.send_keys(self.password).await?;
+        email_field.send_keys(&self.email).await?;
+        thread::sleep(Duration::from_secs(1));
+        password_field.send_keys(&self.password).await?;
 
         let login_button: WebElement = driver.find(By::ClassName("e1w6iovg0")).await?;
 
@@ -100,7 +131,7 @@ impl User {
 
     pub async fn navigate_to_hashtag(
         &self,
-        driver: &WebDriver,
+        driver: WebDriver,
         hashtag: String,
     ) -> WebDriverResult<()> {
         driver
@@ -109,28 +140,31 @@ impl User {
         Ok(())
     }
 
-    pub async fn search(&self, driver: &WebDriver, query: String) -> WebDriverResult<()> {
+    pub async fn search(&self, driver: WebDriver, query: String) -> WebDriverResult<()> {
         driver
             .goto(format!("https://www.tiktok.com/search?q={}", query))
             .await?;
         Ok(())
     }
-}
 
-// just allows me to add a cookie for testing
-pub async fn add_cookie(driver: &WebDriver) -> WebDriverResult<()> {
-    driver.goto("https://tiktok.com").await?;
+    pub async fn run(&self) -> WebDriverResult<()> {
+        let mut caps = DesiredCapabilities::chrome();
+        caps.add_chrome_arg("--disable-blink-features=AutomationControlled")?;
+        let driver = WebDriver::new("http://localhost:9515", caps).await?;
 
-    let cook = Cookie::build("sessionid", "fbc16c7c0a0926982c23d9714da9d347")
-        .domain(".tiktok.com")
-        .path("/")
-        .same_site(SameSite::None)
-        .secure(true)
-        .http_only(true)
-        .finish();
-
-    driver.add_cookie(cook).await?;
-    driver.refresh().await?;
-
-    Ok(())
+        match &self.type_ {
+            AccountType::Passive => {
+                println!("{}", self.username);
+            }
+            AccountType::Active => {
+                println!("{}", self.username);
+            }
+            AccountType::Control => {
+                println!("{}", self.username);
+            }
+        }
+        thread::sleep(Duration::from_secs(60));
+        driver.quit().await.unwrap();
+        Ok(())
+    }
 }

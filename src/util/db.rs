@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use mongodb::bson::doc;
 
-use crate::util::web_helper::User;
+use crate::util::user::User;
 
 pub async fn get_random_user(
     client_ref: mongodb::Client,
