@@ -1,0 +1,246 @@
+import random
+import time
+
+from enum import Enum
+from bson.objectid import ObjectId
+from time import sleep
+from pymongo import MongoClient
+from seleniumwire import webdriver
+from selenium.common.exceptions import ElementClickInterceptedException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.action_chains import ActionChains
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium_stealth import stealth
+
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+]
+
+HASHTAGS = ["trumparrest", "donaldtrumpindicted", "donaldtrumparrested", "indictment", "donaldtrumpindictment", "trumpgoingtojail", "indictedwestand", "TrumpArraignment", "TrumpArraignmentDay", "HappyTrumpArraignmentDay", "TrumpIndicted", "presidentialrecordsact", "trumpespionage", "trumpobstruction", "trumpclassifieddocuments"]
+TRUMP_COMMENTS = ["trump", "donaldtrump", "maga", "trump2024", "americafirst", "45thpresident", "trumptrain", "trumpsupporters", "trumppence"]
+BIDEN_COMMENTS = ["biden", "joebiden", "bidenharris", "biden2024", "bidenadministration", "buildbackbetter", "democraticparty", "presidentbiden"]
+CLIENT = MongoClient("mongodb://localhost:27017/")
+
+def proxies() -> dict:
+    wire_options = {
+        "proxy": {
+            "http": "http://proxy-cst.is.depaul.edu:3128",
+            "https": "http://proxy-cst.is.depaul.edu:3128",
+        }
+    }
+
+    return wire_options
+
+
+class AccountType(Enum):
+    LIKE = 0
+    COMMENT = 1
+    PASSIVE = 2
+    CONTROL = 3
+
+
+class Bot():
+    def __init__(self, id_: ObjectId, email: str, username: str, password: str, type_: str, status: str, db):
+        self.id_ = id_
+        self.email = email
+        self.username = username
+        self.password = password
+        self.type_ = type_
+        self.status = status
+        self.driver = self.setup_webdriver()
+        self.db = db
+
+    def generate_account_type(self):
+        options = [AccountType.LIKE, AccountType.COMMENT, AccountType.PASSIVE, AccountType.CONTROL]
+        type_ = random.choice(options).value
+        self.db.add_type_to_bot(CLIENT, self.username, type_)
+
+        return type_
+
+
+    def setup_webdriver(self):
+        options = webdriver.ChromeOptions()
+        options.headless = True
+        options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
+        options.add_argument("start-maximized")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
+
+        driver = webdriver.Chrome(
+            ChromeDriverManager().install(), options=options, seleniumwire_options=proxies()
+        )
+
+        stealth(driver,
+            languages=["en-US", "en"],
+            vendor="Google Inc.",
+            platform="Win32",
+            webgl_vendor="Intel Inc.",
+            renderer="Intel Iris OpenGL Engine",
+            fix_hairline=True,
+        )
+
+        return driver
+
+    # User action methods (login, scroll, like, comment)   
+    def login(self, sessionid):
+        self.driver.get("https://www.tiktok.com/en")
+        sessionid_cookie = {
+                "name": "sessionid",
+                "value": sessionid,
+                "domain": ".tiktok.com",
+                "path": "/",
+                "secure": True,
+                "httpOnly": True,
+                "sameSite": "None"
+            }
+
+        self.driver.add_cookie(sessionid_cookie)
+        self.driver.refresh()
+
+    def scroll(self):
+        actions = ActionChains(self.driver)
+        actions.send_keys("\ue015")
+        actions.perform()
+
+    def like(self):
+        actions = ActionChains(self.driver)
+        actions.send_keys("L")
+        actions.perform()
+
+    def comment(self, logger, comment: str):
+        comment_element = self.driver.find_element(By.CLASS_NAME, "e1rzzhjk2")
+        try:
+            comment_element.click()
+        except ElementClickInterceptedException:
+            logger.error("captcha detected. refreshing page.")
+            self.driver.refresh()
+
+        time.sleep(1)
+        text_field = self.driver.find_element(By.CLASS_NAME, "public-DraftStyleDefault-ltr")
+        text_field.send_keys(comment + Keys.ENTER)
+
+        time.sleep(10)
+
+    # Navigation methods
+    def search(self, query: str):
+        self.driver.get(f"https://www.tiktok.com/search?q={query}")
+
+    def goto_hashtag(self, hashtag: str):
+        self.driver.get(f"https://www.tiktok.com/tag/{hashtag}")
+        elements = self.driver.find_elements(By.CLASS_NAME, "e1yey0rl0")
+        elements[0].click()
+        sleep(2)
+
+    def start(self, logger, sessionid):
+        self.login(sessionid)
+        if self.driver.get_cookie("sessionid") is not None:
+            logger.info(f"{self.username} logged into TikTok successfully")
+            print(f"[+] logged in with {self.username}")
+
+        else:
+            print("cookie not found")
+            return
+
+        start_time = time.time()
+        logger.info(f"starting run on {self.username} @ {start_time}")
+        print(f"[!] starting run on {self.username} @ {start_time}")
+
+        self.driver.get("https://bot.sannysoft.com/")
+        sleep(5)
+        self.driver.save_screenshot("images/sannysoft.png")
+        sleep(1)
+
+        
+        if self.status == False:
+            self.type_ = self.generate_account_type()
+            self.db.update_status(CLIENT, self.username, True)
+            #print(self.type_)
+
+        if self.type_ == 0 or self.type_ == 1:
+            for i in range(len(HASHTAGS)-1):
+                #print(time.strftime("%H:%M:%S", time.localtime()))
+                counter = 0
+                self.goto_hashtag(HASHTAGS[i])
+                while counter < 15:
+                    sleep(5)
+                    current_url = str(self.driver.current_url)
+                    try:
+                        video_description = self.driver.find_elements(By.CLASS_NAME, "eih2qak0")[counter].get_attribute("title")
+                        self.db.add_data(CLIENT, current_url, video_description)
+                        self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-init.png")
+                    except:
+                        print("Failed to get video description")
+                        logger.error("Failed to get video description")
+
+                    sleep(5)
+
+                    if self.type_ == 0:
+                        self.like()
+                        logger.info(f"{self.username} liked video {current_url}")
+                        sleep(5)
+
+                        bookmark_elem = self.driver.find_elements(By.CLASS_NAME, "e1hk3hf90")
+                        for elem in bookmark_elem:
+                            if elem.get_attribute("data-e2e") == "undefined-icon":
+                                try:
+                                    elem.click()
+                                    self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-bookmark.png")
+                                    logger.info(f"{self.username} bookmarked {current_url}")
+                                except ElementClickInterceptedException:
+                                    logger.error("captcha detected. refreshing page.")
+                                    self.driver.refresh()
+                                except:
+                                    logger.error(f"{self.username} could not bookmark {current_url}")
+                                    self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-bookmark-fail.png")
+                    
+                    else:
+                        comment = random.choice(TRUMP_COMMENTS)
+                        self.comment(logger, comment)
+                        logger.info(f"{self.username} commented {comment} on {current_url}")
+
+                    duration = random.randint(30,60)
+                    sleep(duration)
+                    counter += 1
+                    
+                    arrows = self.driver.find_elements(By.CLASS_NAME, "e11s2kul11")
+                    for arrow in arrows:
+                        if arrow.get_attribute("data-e2e") == "arrow-right":
+                            try:
+                                arrow.click()
+                            except ElementClickInterceptedException:
+                                logger.error("captcha detected. refreshing page.")
+                                self.driver.refresh()
+
+            print("[SUCCESS] Run complete!")
+
+        # passive account - scroll through 100 videos on the fyp and watch each video for 30-60 seconds
+        elif self.type_ == 2:
+            self.driver.get("https://www.tiktok.com/foryou")
+            for i in range(100):
+                duration = random.randint(30,60)
+                time.sleep(duration)
+                logger.info(f"{self.username} sleeping for {duration}s")
+
+                author = self.driver.find_elements(By.CLASS_NAME, "emt6k1z0")[i].text
+                description = self.driver.find_elements(By.CLASS_NAME, "ejg0rhn0")[i].text
+                likes = self.driver.find_elements(By.CLASS_NAME, "e1hk3hf92")[i].text
+                comments = self.driver.find_elements(By.CLASS_NAME, "e1hk3hf92")[i].text
+                bookmarks = self.driver.find_elements(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='undefined-count']")[i].text
+                shares = self.driver.find_elements(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='share-count']")[i].text
+
+                #print(f"Current video: {author}, {description}, Likes: {likes}, Comments: {comments}, Bookmarks: {bookmarks}, Shares: {shares}")
+                video = self.db.FYPVideo(author, description, likes, comments, bookmarks, shares)
+                video.insert_video(CLIENT, self.username)
+
+                self.scroll()
+                logger.info(f"{self.username} scrolling on fyp")
+            
+        # do nothing since it is a control account
+        elif self.type_ == 3:
+            print("control account")
+
+        else:
+            logger.error(f"invalid user type! :: {self.type_}")
