@@ -3,8 +3,8 @@ import time
 
 from enum import Enum
 from bson.objectid import ObjectId
+import os
 from time import sleep
-from pymongo import MongoClient
 from seleniumwire import webdriver
 from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.webdriver.common.by import By
@@ -13,6 +13,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium_stealth import stealth
 
+import db.helpers as videos
 
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
@@ -22,7 +23,6 @@ USER_AGENTS = [
 HASHTAGS = ["trumparrest", "donaldtrumpindicted", "donaldtrumparrested", "indictment", "donaldtrumpindictment", "trumpgoingtojail", "indictedwestand", "TrumpArraignment", "TrumpArraignmentDay", "HappyTrumpArraignmentDay", "TrumpIndicted", "presidentialrecordsact", "trumpespionage", "trumpobstruction", "trumpclassifieddocuments"]
 TRUMP_COMMENTS = ["trump", "donaldtrump", "maga", "trump2024", "americafirst", "45thpresident", "trumptrain", "trumpsupporters", "trumppence"]
 BIDEN_COMMENTS = ["biden", "joebiden", "bidenharris", "biden2024", "bidenadministration", "buildbackbetter", "democraticparty", "presidentbiden"]
-CLIENT = MongoClient("mongodb://localhost:27017/")
 
 def proxies() -> dict:
     wire_options = {
@@ -43,34 +43,35 @@ class AccountType(Enum):
 
 
 class Bot():
-    def __init__(self, id_: ObjectId, email: str, username: str, password: str, type_: str, status: str, db):
+    def __init__(self, id_: ObjectId, email: str, username: str, password: str, type_: str, sessionid: str, status: str, db):
         self.id_ = id_
         self.email = email
         self.username = username
         self.password = password
         self.type_ = type_
         self.status = status
+        self.sessionid = sessionid
         self.driver = self.setup_webdriver()
         self.db = db
 
     def generate_account_type(self):
         options = [AccountType.LIKE, AccountType.COMMENT, AccountType.PASSIVE, AccountType.CONTROL]
         type_ = random.choice(options).value
-        self.db.add_type_to_bot(CLIENT, self.username, type_)
+        self.db.add_type_to_bot(self.username, type_)
 
         return type_
 
 
     def setup_webdriver(self):
         options = webdriver.ChromeOptions()
-        options.headless = True
+        options.headless = False
         options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
         options.add_argument("start-maximized")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
 
         driver = webdriver.Chrome(
-            ChromeDriverManager().install(), options=options, seleniumwire_options=proxies()
+            ChromeDriverManager().install(), options=options #seleniumwire_options=proxies()
         )
 
         stealth(driver,
@@ -85,11 +86,11 @@ class Bot():
         return driver
 
     # User action methods (login, scroll, like, comment)   
-    def login(self, sessionid):
+    def login(self):
         self.driver.get("https://www.tiktok.com/en")
         sessionid_cookie = {
                 "name": "sessionid",
-                "value": sessionid,
+                "value": self.sessionid,
                 "domain": ".tiktok.com",
                 "path": "/",
                 "secure": True,
@@ -134,29 +135,36 @@ class Bot():
         elements[0].click()
         sleep(2)
 
-    def start(self, logger, sessionid):
-        self.login(sessionid)
+    def start(self, db):
+        self.login()
         if self.driver.get_cookie("sessionid") is not None:
-            logger.info(f"{self.username} logged into TikTok successfully")
+            db.logger.info(f"{self.username} logged into TikTok successfully")
             print(f"[+] logged in with {self.username}")
 
         else:
             print("cookie not found")
             return
 
+        
+        dir_path = "data/html"
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        else:
+            pass
+
         start_time = time.time()
-        logger.info(f"starting run on {self.username} @ {start_time}")
+        db.logger.info(f"starting run on {self.username} @ {start_time}")
         print(f"[!] starting run on {self.username} @ {start_time}")
 
-        self.driver.get("https://bot.sannysoft.com/")
-        sleep(5)
-        self.driver.save_screenshot("images/sannysoft.png")
-        sleep(1)
+        #self.driver.get("https://bot.sannysoft.com/")
+        #sleep(5)
+        #self.driver.save_screenshot("images/sannysoft.png")
+        #sleep(1)
 
         
         if self.status == False:
             self.type_ = self.generate_account_type()
-            self.db.update_status(CLIENT, self.username, True)
+            db.update_status(self.username, True)
             #print(self.type_)
 
         if self.type_ == 0 or self.type_ == 1:
@@ -169,17 +177,17 @@ class Bot():
                     current_url = str(self.driver.current_url)
                     try:
                         video_description = self.driver.find_elements(By.CLASS_NAME, "eih2qak0")[counter].get_attribute("title")
-                        self.db.add_data(CLIENT, current_url, video_description)
+                        db.add_data(current_url, video_description)
                         self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-init.png")
                     except:
                         print("Failed to get video description")
-                        logger.error("Failed to get video description")
+                        db.logger.error("Failed to get video description")
 
                     sleep(5)
 
                     if self.type_ == 0:
                         self.like()
-                        logger.info(f"{self.username} liked video {current_url}")
+                        db.logger.info(f"{self.username} liked video {current_url}")
                         sleep(5)
 
                         bookmark_elem = self.driver.find_elements(By.CLASS_NAME, "e1hk3hf90")
@@ -188,18 +196,18 @@ class Bot():
                                 try:
                                     elem.click()
                                     self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-bookmark.png")
-                                    logger.info(f"{self.username} bookmarked {current_url}")
+                                    db.logger.info(f"{self.username} bookmarked {current_url}")
                                 except ElementClickInterceptedException:
-                                    logger.error("captcha detected. refreshing page.")
+                                    db.logger.error("captcha detected. refreshing page.")
                                     self.driver.refresh()
                                 except:
-                                    logger.error(f"{self.username} could not bookmark {current_url}")
+                                    db.logger.error(f"{self.username} could not bookmark {current_url}")
                                     self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-bookmark-fail.png")
                     
                     else:
                         comment = random.choice(TRUMP_COMMENTS)
-                        self.comment(logger, comment)
-                        logger.info(f"{self.username} commented {comment} on {current_url}")
+                        self.comment(db.logger, comment)
+                        db.logger.info(f"{self.username} commented {comment} on {current_url}")
 
                     duration = random.randint(30,60)
                     sleep(duration)
@@ -211,7 +219,7 @@ class Bot():
                             try:
                                 arrow.click()
                             except ElementClickInterceptedException:
-                                logger.error("captcha detected. refreshing page.")
+                                db.logger.error("captcha detected. refreshing page.")
                                 self.driver.refresh()
 
             print("[SUCCESS] Run complete!")
@@ -220,27 +228,44 @@ class Bot():
         elif self.type_ == 2:
             self.driver.get("https://www.tiktok.com/foryou")
             for i in range(100):
-                duration = random.randint(30,60)
-                time.sleep(duration)
-                logger.info(f"{self.username} sleeping for {duration}s")
-
-                author = self.driver.find_elements(By.CLASS_NAME, "emt6k1z0")[i].text
-                description = self.driver.find_elements(By.CLASS_NAME, "ejg0rhn0")[i].text
-                likes = self.driver.find_elements(By.CLASS_NAME, "e1hk3hf92")[i].text
-                comments = self.driver.find_elements(By.CLASS_NAME, "e1hk3hf92")[i].text
-                bookmarks = self.driver.find_elements(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='undefined-count']")[i].text
+                duration = random.randint(30,50)
+                sleep(2)
                 shares = self.driver.find_elements(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='share-count']")[i].text
+                sleep(3)
+                try:
+                    self.driver.find_element(By.TAG_NAME, "video").click()
+                except:
+                    self.driver.refresh()
+                    self.driver.find_element(By.TAG_NAME, "video").click()
 
-                #print(f"Current video: {author}, {description}, Likes: {likes}, Comments: {comments}, Bookmarks: {bookmarks}, Shares: {shares}")
-                video = self.db.FYPVideo(author, description, likes, comments, bookmarks, shares)
-                video.insert_video(CLIENT, self.username)
+                db.logger.info(f"{self.username} sleeping for {duration + 7}s")
+                time.sleep(duration)
+
+                author = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div[1]/div[1]/div/div[1]/div[1]/a[2]/h3").text
+                description = self.driver.find_element(By.XPATH, "//div[contains(@class, 'ejg0rhn0') and @data-e2e='browse-video-desc']").text
+                likes = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='browse-like-count']").text
+                comments = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='browse-comment-count']").text
+                bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='undefined-count']").text
+                post_date = self.driver.find_element(By.XPATH, "//span[contains(@class, 'evv7pft3') and @data-e2e='browser-nickname']").text.split("\n", 2)[2]                
+                video_sound = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[4]/div/div[2]/div[1]/div/div[1]/div[1]/div[2]/h4/a/div").text
+                video_url = self.driver.current_url
+
+                #print(f"Current video: {author}, {description}, Likes: {likes}, Comments: {comments}, Bookmarks: {bookmarks}, Shares: {shares}, Post Date: {post_date}")
+                video = videos.FYPVideo(author, description, likes, comments, bookmarks, shares, post_date, video_sound, video_url)
+                db.insert_video(self.username, video)
+
+                with open(f"data/html/{self.username}-{video_url.split('video/')[1]}.html", "w", encoding="utf-8") as f:
+                    f.write(self.driver.page_source)
+
+                self.driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[4]/div/div[1]/button[1]").click()
+                sleep(5)
 
                 self.scroll()
-                logger.info(f"{self.username} scrolling on fyp")
+                db.logger.info(f"[+] {self.username} scrolling on fyp")
             
         # do nothing since it is a control account
         elif self.type_ == 3:
-            print("control account")
+            print("[-] control account. doing nothing")
 
         else:
-            logger.error(f"invalid user type! :: {self.type_}")
+            db.logger.error(f"[!] invalid user type! :: {self.type_}")

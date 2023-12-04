@@ -1,25 +1,17 @@
 from pymongo import MongoClient, errors
-from bson.objectid import ObjectId
 from tiktok.bot import Bot, AccountType
 
-
 class FYPVideo():
-    def __init__(self, author, description, likes, comments, bookmarks, shares):
+    def __init__(self, author, description, likes, comments, bookmarks, shares, date, sound, url):
         self.author = author
         self.description = description
         self.likes = likes
         self.comments = comments
         self.bookmarks = bookmarks
         self.shares = shares
-
-    def insert_video(self, client: MongoClient, username):
-        db = client["algoprober"]
-        collection = db["fyp_videos"]
-
-        try:
-            collection.insert_one({"username": username, "author": self.author, "description": self.description, "likes": self.likes, "comments": self.comments, "bookmarks": self.bookmarks, "shares": self.shares})
-        except:
-            print("Failed to insert FYP video..")
+        self.date = date
+        self.sound = sound
+        self.url = url
 
 def get_bot_type(bot_type: str):
     for account_type in AccountType:
@@ -47,6 +39,7 @@ class AlgoproberDB():
                         password=bot.get("password"),
                         type_=bot.get("user_type"),
                         status=bot.get("status"),
+                        sessionid=bot.get("sessionid"),
                         db=self,
                     )
 
@@ -61,6 +54,14 @@ class AlgoproberDB():
 
         user_record = {"username": username}
         update_operation = {"$set": {"user_type": bot_type}}
+
+        collection.update_one(user_record, update_operation)
+
+    def add_sessionid(self, username, sessionid):
+        collection = self.db["users"]
+
+        user_record = {"username": username}
+        update_operation = {"$set": {"sessionid": sessionid}}
 
         collection.update_one(user_record, update_operation)
 
@@ -82,4 +83,14 @@ class AlgoproberDB():
 
         except errors.DuplicateKeyError:
             pass
+
+    def insert_video(self, username, video: FYPVideo):
+        collection = self.db["fyp_videos"]
+
+        try:
+            collection.insert_one({"username": username, "author": video.author, "description": video.description, "likes": video.likes, "comments": video.comments, "bookmarks": video.bookmarks, "shares": video.shares, "date": video.date, "sound": video.sound, "url": video.url})
+        except:
+            print("[!] failed to insert fyp video")
+
+
 

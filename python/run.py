@@ -25,14 +25,15 @@ ch.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(ch)
 
-def run_bot(bot, logger, event, sessionid):
+def run_bot(bot, event):
     event.wait()
-    bot.start(logger, sessionid)
+    bot.start(db)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="tiktok-botz")
     parser.add_argument("-t", "--type", type=str, help="bot type (like, comment, passive, control)", dest="bot_type", required=True)
     parser.add_argument("-c", "--collection-method", type=str, help="collection method (default / fyp)", dest="collection_method", default="default")
+    parser.add_argument("-s", "--sessions", type=str, help="add sessionid cookies")
     args = parser.parse_args()
 
     db = db.helpers.AlgoproberDB(logger)
@@ -57,14 +58,19 @@ if __name__ == "__main__":
     for bot in bots:
         print(f"[+] Bot selected: {bot.email}:{bot.password} as type: {bot.type_} with status {bot.status}")
         
-        sessionid = input("[!] please enter sessionid cookie: ")
-        t = threading.Thread(target=run_bot, args=(bot, logger, input_event, sessionid))
-        threads.append(t)
-        t.start()
+        if args.sessions:
+            sessionid = input("[!] please enter sessionid cookie: ")
+            db.add_sessionid(bot.username, sessionid)
+            break
+        else: 
+            t = threading.Thread(target=run_bot, args=(bot, input_event)) 
+            threads.append(t)
+            t.start()
         
-    input("[+] press enter to start bots: ")
-    input_event.set()
+    if not args.sessions:
+        input("[+] press enter to start bots: ")
+        input_event.set()
 
-    for t in threads:
-        t.join()
+        for t in threads:
+            t.join()
 

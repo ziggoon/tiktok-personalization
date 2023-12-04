@@ -1,3 +1,3 @@
-__all__ = ['db']
+__all__ = ['helpers']
 
 from db import helpers

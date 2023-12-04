@@ -8,6 +8,7 @@ Cargo.lock
 *.pem
 *.csv
 *.pdf
+*.log
 
 
 # directories and files to ignore
@@ -16,3 +17,4 @@ __pycache__/
 scripts/
 data/
 .venv/
+images/
