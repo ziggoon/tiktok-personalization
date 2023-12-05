@@ -64,14 +64,14 @@ class Bot():
 
     def setup_webdriver(self):
         options = webdriver.ChromeOptions()
-        options.headless = False
+        options.headless = True
         options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
         options.add_argument("start-maximized")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
 
         driver = webdriver.Chrome(
-            ChromeDriverManager().install(), options=options #seleniumwire_options=proxies()
+            ChromeDriverManager().install(), options=options, seleniumwire_options=proxies()
         )
 
         stealth(driver,

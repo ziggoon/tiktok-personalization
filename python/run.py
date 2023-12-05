@@ -4,6 +4,8 @@ import argparse
 import threading
 import logging 
 
+from time import sleep
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -50,7 +52,7 @@ if __name__ == "__main__":
             print("[-] please enter a valid bot type: like, comment, passive, control")
             exit(1)
             
-    for bot in bots:
+    for i, bot in enumerate(bots):
         print(f"[+] Bot selected: {bot.email}:{bot.password} as type: {bot.type_} with status {bot.status}")
         
         if args.sessions:
@@ -60,7 +62,20 @@ if __name__ == "__main__":
         else: 
             t = threading.Thread(target=run_bot, args=(bot, input_event)) 
             threads.append(t)
-            t.start()
+
+            if len(threads) == 5 or i == len(bots) - 1:
+                input_event.set()
+
+            for thread in threads:
+                thread.start()
+
+            for thread in threads:
+                thread.join()
+
+            threads = []
+            if i != len(bots) - 1:
+                print("[+] waiting 60s to start 5 additional bots")
+                sleep(60)
         
     if not args.sessions:
         input("[+] press enter to start bots: ")
