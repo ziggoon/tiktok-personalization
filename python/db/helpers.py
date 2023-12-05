@@ -1,7 +1,7 @@
 from pymongo import MongoClient, errors
 from tiktok.bot import Bot, AccountType
 
-class FYPVideo():
+class Video():
     def __init__(self, author, description, likes, comments, bookmarks, shares, date, sound, url):
         self.author = author
         self.description = description
@@ -73,18 +73,16 @@ class AlgoproberDB():
 
         collection.update_one(user_record, update_operation)
 
-    def add_data(self, url, description):
-        collection = self.db["videos"]
-
-        collection.create_index("url", unique=True)
+    def insert_hashtag_video(self, username, video: Video):
+        collection = self.db["hashtag_videos"]
+        collection.create_index(video.url, unique=True)
 
         try:
-            collection.insert_one({"url": url, "description": description})
+            collection.insert_one({"username": username, "author": video.author, "description": video.description, "likes": video.likes, "comments": video.comments, "bookmarks": video.bookmarks, "shares": video.shares, "date": video.date, "sound": video.sound, "url": video.url})
+        except:
+            print("[!] failed to insert hashtag video")
 
-        except errors.DuplicateKeyError:
-            pass
-
-    def insert_video(self, username, video: FYPVideo):
+    def insert_fyp_video(self, username, video: Video):
         collection = self.db["fyp_videos"]
 
         try:

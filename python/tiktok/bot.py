@@ -172,39 +172,43 @@ class Bot():
                 self.goto_hashtag(HASHTAGS[i])
                 sleep(5)
                 while counter < 15:
-                    current_url = str(self.driver.current_url)
-                    try:
-                        video_description = self.driver.find_elements(By.CLASS_NAME, "eih2qak0")[counter].get_attribute("title")
-                        db.add_data(current_url, video_description)
-                        self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-init.png")
-                    except:
-                        print("Failed to get video description")
-                        db.logger.error("Failed to get video description")
+                    author = self.driver.find_element(By.XPATH, "//p[contains(@class, 'exdlci15') and @data-e2e='challenge-item-username']").text
+                    description = self.driver.find_element(By.XPATH, "//div[contains(@class, 'ejg0rhn0') and @data-e2e='browse-video-desc']").text
+                    likes = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='browse-like-count']").text
+                    comments = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='browse-comment-count']").text
+                    bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='undefined-count']").text
+                    post_date = self.driver.find_element(By.XPATH, "//span[contains(@class, 'evv7pft3') and @data-e2e='browser-nickname']").text.split("\n", 2)[2]                
+                    video_sound = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[4]/div/div[2]/div[1]/div/div[1]/div[1]/div[2]/h4/a/div").text
+                    video_url = self.driver.current_url
+
+                    video = videos.Video(author, description, likes, comments, bookmarks, 0, post_date, video_sound, video_url)
+                    db.insert_hashtag_video(self.username, video)
+                    self.driver.save_screenshot(f"images/{self.username}+{video_url[45:]}-init.png")
 
                     sleep(5)
 
                     if self.type_ == 0:
                         self.like()
-                        db.logger.info(f"{self.username} liked video {current_url}")
+                        db.logger.info(f"{self.username} liked video {video_url}")
                         sleep(5)
                         
                         bookmark_elem = self.driver.find_element(By.XPATH, "//span[contains(@class, 'e1hk3hf91') and @data-e2e='undefined-icon']")
                         try:
                             bookmark_elem.click()
-                            self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-bookmark.png")
-                            db.logger.info(f"{self.username} bookmarked {current_url}")
+                            self.driver.save_screenshot(f"images/{self.username}+{video_url[45:]}-bookmark.png")
+                            db.logger.info(f"{self.username} bookmarked {video_url}")
                         except ElementClickInterceptedException:
                             db.logger.error("captcha detected. refreshing page. attempting to restart current hashtag collection")
                             self.driver.refresh()
                             self.goto_hashtag(HASHTAGS[i])
                         except:
-                            db.logger.error(f"{self.username} could not bookmark {current_url}")
-                            self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-bookmark-fail.png")
+                            db.logger.error(f"{self.username} could not bookmark {video_url}")
+                            self.driver.save_screenshot(f"images/{self.username}+{video_url[45:]}-bookmark-fail.png")
                     
                     else:
                         comment = random.choice(TRUMP_COMMENTS)
                         self.comment(db.logger, comment)
-                        db.logger.info(f"{self.username} commented {comment} on {current_url}")
+                        db.logger.info(f"{self.username} commented {comment} on {video_url}")
 
                     duration = random.randint(30,60)
                     sleep(duration)
@@ -224,9 +228,7 @@ class Bot():
             self.driver.get("https://www.tiktok.com/foryou")
             for i in range(100):
                 duration = random.randint(30,50)
-                sleep(2)
-                shares = self.driver.find_elements(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='share-count']")[i].text
-                sleep(3)
+                sleep(5)
                 try:
                     self.driver.find_element(By.TAG_NAME, "video").click()
                 except:
@@ -241,13 +243,14 @@ class Bot():
                 likes = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='browse-like-count']").text
                 comments = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='browse-comment-count']").text
                 bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='undefined-count']").text
+                shares = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='share-count']").text
                 post_date = self.driver.find_element(By.XPATH, "//span[contains(@class, 'evv7pft3') and @data-e2e='browser-nickname']").text.split("\n", 2)[2]                
                 video_sound = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[4]/div/div[2]/div[1]/div/div[1]/div[1]/div[2]/h4/a/div").text
                 video_url = self.driver.current_url
 
                 #print(f"Current video: {author}, {description}, Likes: {likes}, Comments: {comments}, Bookmarks: {bookmarks}, Shares: {shares}, Post Date: {post_date}")
-                video = videos.FYPVideo(author, description, likes, comments, bookmarks, shares, post_date, video_sound, video_url)
-                db.insert_video(self.username, video)
+                video = videos.Video(author, description, likes, comments, bookmarks, shares, post_date, video_sound, video_url)
+                db.insert_fyp_video(self.username, video)
 
                 with open(f"data/html/{self.username}-{video_url.split('video/')[1]}.html", "w", encoding="utf-8") as f:
                     f.write(self.driver.page_source)
