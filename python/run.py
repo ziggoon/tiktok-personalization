@@ -66,16 +66,17 @@ if __name__ == "__main__":
             if len(threads) == 5 or i == len(bots) - 1:
                 input_event.set()
 
-            for thread in threads:
-                thread.start()
+                for thread in threads:
+                    thread.start()
 
-            for thread in threads:
-                thread.join()
+                for thread in threads:
+                    thread.join()
 
-            threads = []
-            if i != len(bots) - 1:
-                print("[+] waiting 60s to start 5 additional bots")
-                sleep(60)
+                threads = []
+
+                if i != len(bots) - 1:
+                    print("[+] waiting 60s to start 5 additional bots")
+                    sleep(60)
         
     if not args.sessions:
         input("[+] press enter to start bots: ")
