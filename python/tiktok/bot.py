@@ -172,13 +172,14 @@ class Bot():
                 self.goto_hashtag(HASHTAGS[i])
                 sleep(5)
                 while counter < 15:
-                    author = self.driver.find_element(By.XPATH, "//p[contains(@class, 'exdlci15') and @data-e2e='challenge-item-username']").text
-                    description = self.driver.find_element(By.XPATH, "//div[contains(@class, 'ejg0rhn0') and @data-e2e='browse-video-desc']").text
-                    likes = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='browse-like-count']").text
-                    comments = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='browse-comment-count']").text
-                    bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='undefined-count']").text
-                    post_date = self.driver.find_element(By.XPATH, "//span[contains(@class, 'evv7pft3') and @data-e2e='browser-nickname']").text.split("\n", 2)[2]                
-                    video_sound = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[4]/div/div[2]/div[1]/div/div[1]/div[1]/div[2]/h4/a/div").text
+                    author = self.driver.find_element(By.XPATH, "//div[cotanins(@data-e2e, 'browse-username')]").text
+                    description = self.driver.find_element(By.XPATH, "//div[contains(@data-e2e, 'browse-video-desc']").text
+                    likes = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-like-count')]").text
+                    comments = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-comment-count')]").text
+                    bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'undefined-count')]").text
+                    shares = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'share-count')]").text
+                    post_date = self.driver.find_element(By.XPATH, "//span[contains(@data-e2e, 'browser-nickname')]").text.split("\n", 2)[2]                
+                    video_sound = self.driver.find_element(By.XPATH, "//div[contains(@class, 'epjbyn3')]").text
                     video_url = self.driver.current_url
 
                     video = videos.Video(author, description, likes, comments, bookmarks, 0, post_date, video_sound, video_url)
@@ -238,14 +239,14 @@ class Bot():
                 db.logger.info(f"{self.username} sleeping for {duration + 7}s")
                 time.sleep(duration)
 
-                author = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[2]/div[1]/div[1]/div/div[1]/div[1]/a[2]/h3").text
-                description = self.driver.find_element(By.XPATH, "//div[contains(@class, 'ejg0rhn0') and @data-e2e='browse-video-desc']").text
-                likes = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='browse-like-count']").text
-                comments = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='browse-comment-count']").text
-                bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='undefined-count']").text
-                shares = self.driver.find_element(By.XPATH, "//strong[contains(@class, 'e1hk3hf92') and @data-e2e='share-count']").text
-                post_date = self.driver.find_element(By.XPATH, "//span[contains(@class, 'evv7pft3') and @data-e2e='browser-nickname']").text.split("\n", 2)[2]                
-                video_sound = self.driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[4]/div/div[2]/div[1]/div/div[1]/div[1]/div[2]/h4/a/div").text
+                author = self.driver.find_element(By.XPATH, "//div[cotanins(@data-e2e, 'browse-username')]").text
+                description = self.driver.find_element(By.XPATH, "//div[contains(@data-e2e, 'browse-video-desc']").text
+                likes = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-like-count')]").text
+                comments = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-comment-count')]").text
+                bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'undefined-count')]").text
+                shares = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'share-count')]").text
+                post_date = self.driver.find_element(By.XPATH, "//span[contains(@data-e2e, 'browser-nickname')]").text.split("\n", 2)[2]                
+                video_sound = self.driver.find_element(By.XPATH, "//div[contains(@class, 'epjbyn3')]").text
                 video_url = self.driver.current_url
 
                 #print(f"Current video: {author}, {description}, Likes: {likes}, Comments: {comments}, Bookmarks: {bookmarks}, Shares: {shares}, Post Date: {post_date}")
