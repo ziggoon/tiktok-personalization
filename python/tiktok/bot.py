@@ -177,7 +177,6 @@ class Bot():
                     likes = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-like-count')]").text
                     comments = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-comment-count')]").text
                     bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'undefined-count')]").text
-                    shares = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'share-count')]").text
                     post_date = self.driver.find_element(By.XPATH, "//span[contains(@data-e2e, 'browser-nickname')]").text.split("\n", 2)[2]                
                     video_sound = self.driver.find_element(By.XPATH, "//div[contains(@class, 'epjbyn3')]").text
                     video_url = self.driver.current_url
