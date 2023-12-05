@@ -9,7 +9,7 @@ Cargo.lock
 *.csv
 *.pdf
 *.log
-
+*.html
 
 # directories and files to ignore
 .DS_Store

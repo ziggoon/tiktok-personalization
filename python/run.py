@@ -4,11 +4,6 @@ import argparse
 import threading
 import logging 
 
-from seleniumwire import webdriver
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
-
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 

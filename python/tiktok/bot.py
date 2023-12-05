@@ -112,7 +112,7 @@ class Bot():
         actions.perform()
 
     def comment(self, logger, comment: str):
-        comment_element = self.driver.find_element(By.CLASS_NAME, "e1rzzhjk2")
+        comment_element = self.driver.find_element(By.XPATH, "//div[contains(@class, 'e1rzzhjk2') and @data-e2e='comment-input']")
         try:
             comment_element.click()
         except ElementClickInterceptedException:
@@ -131,9 +131,9 @@ class Bot():
 
     def goto_hashtag(self, hashtag: str):
         self.driver.get(f"https://www.tiktok.com/tag/{hashtag}")
-        elements = self.driver.find_elements(By.CLASS_NAME, "e1yey0rl0")
+        sleep(5)
+        elements = self.driver.find_elements(By.TAG_NAME, "video")
         elements[0].click()
-        sleep(2)
 
     def start(self, db):
         self.login()
@@ -163,17 +163,15 @@ class Bot():
 
         
         if self.status == False:
-            self.type_ = self.generate_account_type()
+            #self.type_ = self.generate_account_type()
             db.update_status(self.username, True)
-            #print(self.type_)
 
         if self.type_ == 0 or self.type_ == 1:
             for i in range(len(HASHTAGS)-1):
-                #print(time.strftime("%H:%M:%S", time.localtime()))
                 counter = 0
                 self.goto_hashtag(HASHTAGS[i])
+                sleep(5)
                 while counter < 15:
-                    sleep(5)
                     current_url = str(self.driver.current_url)
                     try:
                         video_description = self.driver.find_elements(By.CLASS_NAME, "eih2qak0")[counter].get_attribute("title")
@@ -189,20 +187,19 @@ class Bot():
                         self.like()
                         db.logger.info(f"{self.username} liked video {current_url}")
                         sleep(5)
-
-                        bookmark_elem = self.driver.find_elements(By.CLASS_NAME, "e1hk3hf90")
-                        for elem in bookmark_elem:
-                            if elem.get_attribute("data-e2e") == "undefined-icon":
-                                try:
-                                    elem.click()
-                                    self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-bookmark.png")
-                                    db.logger.info(f"{self.username} bookmarked {current_url}")
-                                except ElementClickInterceptedException:
-                                    db.logger.error("captcha detected. refreshing page.")
-                                    self.driver.refresh()
-                                except:
-                                    db.logger.error(f"{self.username} could not bookmark {current_url}")
-                                    self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-bookmark-fail.png")
+                        
+                        bookmark_elem = self.driver.find_element(By.XPATH, "//span[contains(@class, 'e1hk3hf91') and @data-e2e='undefined-icon']")
+                        try:
+                            bookmark_elem.click()
+                            self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-bookmark.png")
+                            db.logger.info(f"{self.username} bookmarked {current_url}")
+                        except ElementClickInterceptedException:
+                            db.logger.error("captcha detected. refreshing page. attempting to restart current hashtag collection")
+                            self.driver.refresh()
+                            self.goto_hashtag(HASHTAGS[i])
+                        except:
+                            db.logger.error(f"{self.username} could not bookmark {current_url}")
+                            self.driver.save_screenshot(f"images/{self.username}+{current_url[45:]}-bookmark-fail.png")
                     
                     else:
                         comment = random.choice(TRUMP_COMMENTS)
@@ -213,14 +210,12 @@ class Bot():
                     sleep(duration)
                     counter += 1
                     
-                    arrows = self.driver.find_elements(By.CLASS_NAME, "e11s2kul11")
-                    for arrow in arrows:
-                        if arrow.get_attribute("data-e2e") == "arrow-right":
-                            try:
-                                arrow.click()
-                            except ElementClickInterceptedException:
-                                db.logger.error("captcha detected. refreshing page.")
-                                self.driver.refresh()
+                    arrow = self.driver.find_element(By.XPATH, "//button[contains(@class, 'e11s2kul11') and @data-e2e='arrow-right']")
+                    try:
+                        arrow.click()
+                    except ElementClickInterceptedException:
+                        db.logger.error("captcha detected. refreshing page.")
+                        self.driver.refresh()
 
             print("[SUCCESS] Run complete!")
 
