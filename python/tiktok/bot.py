@@ -173,7 +173,7 @@ class Bot():
                 sleep(5)
                 while counter < 15:
                     author = self.driver.find_element(By.XPATH, "//span[contains(@data-e2e, 'browse-username')]").text
-                    description = self.driver.find_element(By.XPATH, "//div[contains(@data-e2e, 'browse-video-desc']").text
+                    description = self.driver.find_element(By.XPATH, "//div[contains(@data-e2e, 'browse-video-desc')]").text
                     likes = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-like-count')]").text
                     comments = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-comment-count')]").text
                     bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'undefined-count')]").text
@@ -240,7 +240,7 @@ class Bot():
                 time.sleep(duration)
 
                 author = self.driver.find_element(By.XPATH, "//span[contains(@data-e2e, 'browse-username')]").text
-                description = self.driver.find_element(By.XPATH, "//div[contains(@data-e2e, 'browse-video-desc']").text
+                description = self.driver.find_element(By.XPATH, "//div[contains(@data-e2e, 'browse-video-desc')]").text
                 likes = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-like-count')]").text
                 comments = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-comment-count')]").text
                 bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'undefined-count')]").text
