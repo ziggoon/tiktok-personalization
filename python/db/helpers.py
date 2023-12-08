@@ -1,4 +1,5 @@
-from pymongo import MongoClient, errors
+from datetime import datetime
+from pymongo import MongoClient
 from tiktok.bot import Bot, AccountType
 
 class Video():
@@ -78,7 +79,7 @@ class AlgoproberDB():
         collection.create_index(video.url, unique=True)
 
         try:
-            collection.insert_one({"username": username, "author": video.author, "description": video.description, "likes": video.likes, "comments": video.comments, "bookmarks": video.bookmarks, "shares": video.shares, "date": video.date, "sound": video.sound, "url": video.url})
+            collection.insert_one({"username": username, "author": video.author, "description": video.description, "likes": video.likes, "comments": video.comments, "bookmarks": video.bookmarks, "shares": video.shares, "date": video.date, "sound": video.sound, "url": video.url, "timestmap": datetime.now.isoformat()})
         except:
             print("[!] failed to insert hashtag video")
 
@@ -86,9 +87,6 @@ class AlgoproberDB():
         collection = self.db["fyp_videos"]
 
         try:
-            collection.insert_one({"username": username, "author": video.author, "description": video.description, "likes": video.likes, "comments": video.comments, "bookmarks": video.bookmarks, "shares": video.shares, "date": video.date, "sound": video.sound, "url": video.url})
+            collection.insert_one({"username": username, "author": video.author, "description": video.description, "likes": video.likes, "comments": video.comments, "bookmarks": video.bookmarks, "shares": video.shares, "date": video.date, "sound": video.sound, "url": video.url, "timestamp": datetime.now().isoformat()})
         except:
             print("[!] failed to insert fyp video")
-
-
-
