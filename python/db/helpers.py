@@ -76,7 +76,6 @@ class AlgoproberDB():
 
     def insert_hashtag_video(self, username, video: Video):
         collection = self.db["hashtag_videos"]
-        collection.create_index(video.url, unique=True)
 
         try:
             collection.insert_one({"username": username, "author": video.author, "description": video.description, "likes": video.likes, "comments": video.comments, "bookmarks": video.bookmarks, "shares": video.shares, "date": video.date, "sound": video.sound, "url": video.url, "timestmap": datetime.now.isoformat()})
