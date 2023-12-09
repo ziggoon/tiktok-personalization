@@ -34,6 +34,13 @@ def proxies() -> dict:
 
     return wire_options
 
+def create_data_dir():
+    dir_path = "data/html"
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    else:
+        pass
+
 
 class AccountType(Enum):
     LIKE = 0
@@ -64,14 +71,14 @@ class Bot():
 
     def setup_webdriver(self):
         options = webdriver.ChromeOptions()
-        options.headless = True
+        options.headless = False
         options.add_argument(f"user-agent={random.choice(USER_AGENTS)}")
         options.add_argument("start-maximized")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
 
         driver = webdriver.Chrome(
-            ChromeDriverManager().install(), options=options, seleniumwire_options=proxies()
+            ChromeDriverManager().install(), options=options #seleniumwire_options=proxies()
         )
 
         stealth(driver,
@@ -145,23 +152,12 @@ class Bot():
             print("cookie not found")
             return
 
-        
-        dir_path = "data/html"
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-        else:
-            pass
+        create_data_dir()
 
         start_time = time.time()
         db.logger.info(f"starting run on {self.username} @ {start_time}")
         print(f"[!] starting run on {self.username} @ {start_time}")
 
-        #self.driver.get("https://bot.sannysoft.com/")
-        #sleep(5)
-        #self.driver.save_screenshot("images/sannysoft.png")
-        #sleep(1)
-
-        
         if self.status == False:
             #self.type_ = self.generate_account_type()
             db.update_status(self.username, True)
@@ -231,7 +227,7 @@ class Bot():
                 sleep(5)
                 try:
                     self.driver.find_element(By.TAG_NAME, "video").click()
-                except:
+                except ElementClickInterceptedException:
                     self.driver.refresh()
                     self.driver.find_element(By.TAG_NAME, "video").click()
 
@@ -267,3 +263,56 @@ class Bot():
 
         else:
             db.logger.error(f"[!] invalid user type! :: {self.type_}")
+
+    def fyp(self, db):
+        self.login()
+        if self.driver.get_cookie("sessionid") is not None:
+            db.logger.info(f"{self.username} logged into TikTok successfully")
+            print(f"[+] logged in with {self.username}")
+
+        else:
+            print("cookie not found")
+            return
+
+        create_data_dir()
+
+        start_time = time.time()
+        db.logger.info(f"starting run on {self.username} @ {start_time}")
+        print(f"[!] starting run on {self.username} @ {start_time}")
+
+
+        self.driver.get("https://www.tiktok.com/foryou")
+        for i in range(100):
+            duration = random.randint(30,50)
+            sleep(5)
+            try:
+                self.driver.find_element(By.TAG_NAME, "video").click()
+            except ElementClickInterceptedException:
+                self.driver.refresh()
+                self.driver.find_element(By.TAG_NAME, "video").click()
+
+            db.logger.info(f"{self.username} sleeping for {duration + 7}s")
+            time.sleep(duration)
+
+            author = self.driver.find_element(By.XPATH, "//span[contains(@data-e2e, 'browse-username')]").text
+            description = self.driver.find_element(By.XPATH, "//div[contains(@data-e2e, 'browse-video-desc')]").text
+            likes = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-like-count')]").text
+            comments = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'browse-comment-count')]").text
+            bookmarks = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'undefined-count')]").text
+            shares = self.driver.find_element(By.XPATH, "//strong[contains(@data-e2e, 'share-count')]").text
+            post_date = self.driver.find_element(By.XPATH, "//span[contains(@data-e2e, 'browser-nickname')]").text
+            video_sound = self.driver.find_element(By.XPATH, "//div[contains(@class, 'epjbyn3')]").text
+            video_url = self.driver.current_url
+
+            #print(f"Current video: {author}, {description}, Likes: {likes}, Comments: {comments}, Bookmarks: {bookmarks}, Shares: {shares}, Post Date: {post_date}")
+            video = videos.Video(author, description, likes, comments, bookmarks, shares, post_date, video_sound, video_url)
+            db.insert_fyp_video(self.username, video)
+
+            with open(f"data/html/{self.username}-{video_url.split('video/')[1]}.html", "w", encoding="utf-8") as f:
+                f.write(self.driver.page_source)
+
+            self.driver.find_element(By.XPATH, "/html/body/div[1]/div[2]/div[4]/div/div[1]/button[1]").click()
+            sleep(5)
+
+            self.scroll()
+            db.logger.info(f"[+] {self.username} scrolling on fyp")

@@ -22,9 +22,16 @@ ch.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(ch)
 
-def run_bot(bot, event):
+def run_bot(bot, event, collection_method):
     event.wait()
-    bot.start(db)
+
+    match collection_method:
+        case "fyp":
+            bot.fyp(db)
+        case "default":
+            bot.start(db)
+        case default:
+            print("[-] invalid collection method")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="tiktok-botz")
@@ -60,7 +67,7 @@ if __name__ == "__main__":
             db.add_sessionid(bot.username, sessionid)
             break
         else: 
-            t = threading.Thread(target=run_bot, args=(bot, input_event)) 
+            t = threading.Thread(target=run_bot, args=(bot, input_event, args.collection_method)) 
             threads.append(t)
 
             if len(threads) == 5 or i == len(bots) - 1:
