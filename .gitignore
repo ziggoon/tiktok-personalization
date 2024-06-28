@@ -1,0 +1,20 @@
+# rust stuff
+Cargo.lock
+/target
+
+# file extensions we dont want added
+*.exe
+*.db
+*.pem
+*.csv
+*.pdf
+*.log
+*.html
+
+# directories and files to ignore
+.DS_Store
+__pycache__/
+scripts/
+data/
+.venv/
+images/
